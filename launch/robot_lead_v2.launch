@@ -1,0 +1,8 @@
+<launch>
+	<node name="leader" pkg="fri_robot_lead"
+	type="leader">
+	</node>
+
+  <!-- launch the normal robot simulator -->
+  <include file="$(find bwi_launch)/launch/segbot_v2.launch" />
+</launch>
