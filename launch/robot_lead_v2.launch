@@ -1,6 +1,6 @@
 <launch>
 	<node name="leader" pkg="fri_robot_lead"
-	type="leader">
+	type="fri_robot_leader">
 	</node>
 
   <!-- launch the normal robot simulator -->
