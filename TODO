@@ -1,4 +1,13 @@
-TODO:
+###############TODO#########################
 
-  Talk to someone about what GUI is being used currently for the robots
-  Figure out how to layer that GUI on top of existing launch files
+Message type of the gui is bwi_msgs::QuestionDialog
+A corner case has appeared! If we are operating on multi-floor problems, the robot is going to need to be able to get to an elevator and then ask the user to operate it for them? Does the planner already take care of this information?
+
+The options for movement should atm be limited to some number of places
+
+The information for doors is stored in bwi_common/bwi_kr_execution/domain_gui/navigation_facts.asp
+    Notice that this file has information on people being in specific doors
+
+Check bwi_tasks for how to interrupt
+
+Objects are within the asp files and near the maps. Check out these to see what our options are here
