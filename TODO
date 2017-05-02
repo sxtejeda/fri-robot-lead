@@ -12,6 +12,12 @@ Check bwi_tasks for how to interrupt
 
 Objects are within the asp files and near the maps. Check out these to see what our options are here
 
+Locations and rooms might end up being annoying as fuck
+
+Mappings from people? e.g. go to Jivko's office? And there are probably other ones we want to go to -
+like the undergrad lab or something like that?
+
+
 Current shit TODO:
 
 	Upon finishing a goal, the message should return to the original state

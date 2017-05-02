@@ -53,6 +53,23 @@ int main(int argc, char**argv) {
                         ROS_INFO("sending goal");
                         client.sendGoal(goal);
 
+			ros::Rate wait_rate(10);
+			while(ros::ok() && !client.getState().isDone()){
+			  wait_rate.sleep();
+			}
+
+			if (client.getState() == actionlib::SimpleClientGoalState::ABORTED) {
+			  ROS_INFO("Aborted");
+			}
+			else if (client.getState() == actionlib::SimpleClientGoalState::PREEMPTED) {
+			  ROS_INFO("Preempted");
+			}
+  
+			else if (client.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
+			  ROS_INFO("Succeeded!");
+			}
+			else
+			  ROS_INFO("Terminated");
 
                         break;
                     }
@@ -76,7 +93,7 @@ int main(int argc, char**argv) {
         question.request.type = question.request.DISPLAY;
         question.request.timeout = 100000000000.000;
         client_gui.call(question);
-        return 0;
+
     }
 
     return 0;
