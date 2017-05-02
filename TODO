@@ -20,8 +20,4 @@ like the undergrad lab or something like that?
 
 Current shit TODO:
 
-	Upon finishing a goal, the message should return to the original state
-
-	Interrupts for checking to see if the user is there 
-
-	Implement ctrl-C handler
+	Interrupts for checking to see if the user is there
