@@ -11,3 +11,11 @@ The information for doors is stored in bwi_common/bwi_kr_execution/domain_gui/na
 Check bwi_tasks for how to interrupt
 
 Objects are within the asp files and near the maps. Check out these to see what our options are here
+
+Current shit TODO:
+
+	Upon finishing a goal, the message should return to the original state
+
+	Interrupts for checking to see if the user is there 
+
+	Implement ctrl-C handler
