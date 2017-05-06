@@ -3,6 +3,8 @@
 #include "bwi_kr_execution/ExecutePlanAction.h"
 #include <bwi_msgs/QuestionDialog.h>
 
+#define WAIT_TIME 20
+
 typedef actionlib::SimpleActionClient<bwi_kr_execution::ExecutePlanAction> Client;
 using namespace std;
 
@@ -74,8 +76,27 @@ int main(int argc, char**argv) {
       
       client_gui.call(moving);
       ros::Rate wait_rate(10);
+
+      //For timing, check and see if WAIT_TIME seconds have passed before asking the user
+      //if he/she is still there. 
+      ros::Time prev = ros::Time::now();
+      ros::Time checkup = prev + ros::Duration(WAIT_TIME);
+      
       while(ros::ok() && !client.getState().isDone()){
 	wait_rate.sleep();
+	ros::Duration elapsed = ros::Time::now() - prev;
+
+	//Here's an interesting problem. Without this printing out, the timing is extremely
+	//inaccurate due to the system not having anything to do. I wonder if there's a 
+	//better solution for this? Doesn't seem like there is one, and even with the printing
+	//to choke the system it really is quite terrible.
+	ROS_INFO_STREAM(elapsed << " seconds have passed");
+	if(elapsed.toSec() > WAIT_TIME) {
+	  ROS_INFO_STREAM(WAIT_TIME << " seconds have passed");
+	  prev = ros::Time::now();
+	  checkup = prev + ros::Duration(WAIT_TIME);
+	}
+
       }
       
       if (client.getState() == actionlib::SimpleClientGoalState::ABORTED) {
@@ -162,3 +183,5 @@ int main(int argc, char**argv) {
   
   return 0;
 }
+
+
