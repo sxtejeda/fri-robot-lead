@@ -13,6 +13,10 @@ int main(int argc, char **argv) {
   ros::NodeHandle n;
   ros::NodeHandle privateNode("~");
 
+  //These are used to actually cancel goals
+  ros::Publisher move_cancel_pub = n.advertise<actionlib_msgs::GoalID>("/move_base/cancel",1000);
+  actionlib_msgs::GoalID msg;
+
   ros::ServiceClient client_gui = n.serviceClient<bwi_msgs::QuestionDialog>("/question_dialog");
 
   while (ros::ok()) {
@@ -41,6 +45,7 @@ int main(int argc, char **argv) {
     string door;
 
     if (client_gui.call(question)) {
+      move_cancel_pub.publish(msg);
       if (question.response.index >= 0) {
         switch (question.response.index) {
           case 0:
@@ -92,9 +97,29 @@ int main(int argc, char **argv) {
         //inaccurate due to the system not having anything to do. I wonder if there's a
         //better solution for this? Doesn't seem like there is one, and even with the printing
         //to choke the system it really is quite terrible.
-        ROS_INFO_STREAM(elapsed << " seconds have passed");
+        //ROS_INFO_STREAM(elapsed << " seconds have passed");
         if (elapsed.toSec() > WAIT_TIME) {
-          ROS_INFO_STREAM(WAIT_TIME << " seconds have passed");
+
+          ros::spinOnce();
+          client.cancelAllGoals();
+          move_cancel_pub.publish(msg);
+          ros::spinOnce();
+
+          if(client_gui.call(userAlive)){
+            switch(userAlive.response.index){
+              case 0:
+                ROS_INFO("Case 0 selected");
+                client.sendGoal(goal);
+                client_gui.call(moving);
+                break;
+              case 1: //yes
+                ROS_INFO("Case 1 selected");
+                break;
+              default:
+                ROS_INFO("No response maybe? Not sure...");
+                break;
+            }
+          }
           prev = ros::Time::now();
           checkup = prev + ros::Duration(WAIT_TIME);
         }
