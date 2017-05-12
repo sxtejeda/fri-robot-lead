@@ -7,10 +7,16 @@
 #define WAIT_TIME 20
 
 typedef actionlib::SimpleActionClient<bwi_kr_execution::ExecutePlanAction> Client;
-const int roomCount = 2;
+const int roomCount = 8;
 const std::string rooms[] = {
+    "1.416",
+    "2.302_south",
+    "2.700",
     "3.414",
-    "3.404"
+    "3.404",
+    "3.500",
+    "4.414a1",
+    "4.600"
 }; 
 using namespace std;
 
@@ -63,7 +69,7 @@ int main(int argc, char **argv) {
             //ROS_INFO("%s\n", question.response.text);
             ROS_WARN("ANd we're off!");
             privateNode.param<string>("door", door, question.response.text);
-            moving.request.message = "Going to %s", question.response.text;
+            moving.request.message = "Going to " + question.response.text;
             break;
           default:
             ROS_ERROR("Invalid input for buttons");
