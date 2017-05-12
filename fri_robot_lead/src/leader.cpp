@@ -31,8 +31,10 @@ int main(int argc, char **argv) {
   ros::service::waitForService("/room_dialog");
   ros::ServiceClient client_gui = n.serviceClient<lead_rqt_plugins::RoomDialog>("/room_dialog");
 
+  lead_rqt_plugins::RoomDialog question;
+
   while (ros::ok()) {
-    lead_rqt_plugins::RoomDialog question;
+    
     lead_rqt_plugins::RoomDialog moving;
     lead_rqt_plugins::RoomDialog userAlive;
     question.request.type = question.request.COMBOBOX_QUESTION;

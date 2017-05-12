@@ -1,0 +1,18 @@
+<library path="src">
+    <class name="RoomDialogPlugin" type="lead_rqt_plugins.plugins.RoomDialogPlugin" base_class_type="rqt_gui_py::Plugin">
+        <description>
+        Extends existing QuestionDialogPlugin to allow text dropdowns allowing for the user to select a room within the GDC to navigate the BWI bots towards.
+        </description>
+        <qtgui>
+            <group>
+                <label>Robot Lead</label>
+                <icon type="theme">folder</icon>
+                <statustip>Plugins related to Robot Lead within BWI project.</statustip>
+            </group>
+            <label>Room Dialog Plugin</label>
+            <icon type="theme">dialog-question</icon>
+            <statustip>Display text or ask a question or display dropdown select to the user.</statustip>
+        </qtgui>
+    </class>
+</library>
+
