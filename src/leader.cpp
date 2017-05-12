@@ -61,13 +61,12 @@ int main(int argc, char **argv) {
     string door;
 
     if (client_gui.call(question)) {
-      move_cancel_pub.publish(msg);
+      //move_cancel_pub.publish(msg);
       if (question.response.index >= 0) {
         ROS_WARN("RESPONSE RECEIVED");
         switch (question.response.index) {
           case 42:
-            //ROS_INFO("%s\n", question.response.text);
-            ROS_WARN("ANd we're off!");
+            ROS_WARN("And we're off!");
             privateNode.param<string>("door", door, question.response.text);
             moving.request.message = "Going to " + question.response.text;
             break;
