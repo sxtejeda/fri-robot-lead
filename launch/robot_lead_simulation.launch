@@ -5,6 +5,5 @@
   <!-- launch our room dialog -->
 
   <!-- launch the normal robot simulator -->
-  <include file="$(find bwi_launch)/launch/simulation.launch" />
   <node name="lead_rqt_plugins" pkg="lead_rqt_plugins" type="room_dialog_plugin" />
 </launch>

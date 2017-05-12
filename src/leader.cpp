@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
   //These are used to actually cancel goals
   ros::Publisher move_cancel_pub = n.advertise<actionlib_msgs::GoalID>("/move_base/cancel",1000);
   actionlib_msgs::GoalID msg;
-
+  ros::service::waitForService("/room_dialog");
   ros::ServiceClient client_gui = n.serviceClient<lead_rqt_plugins::RoomDialog>("/room_dialog");
 
   while (ros::ok()) {
@@ -153,61 +153,6 @@ int main(int argc, char **argv) {
 
     }
 
-      /*    if(client_gui.call(question)){
-        if(question.response.index >= 0){
-    switch(question.response.index){
-      case 0: {
-
-        moving.request.message = "Going to 414";
-        string door;
-        privateNode.param<string>("door",door,"d3_414b1");
-        bwi_kr_execution::ExecutePlanGoal goal;
-
-        bwi_kr_execution::AspRule rule;
-        bwi_kr_execution::AspFluent fluent;
-        fluent.name = "not facing";
-
-        fluent.variables.push_back(door);
-
-        rule.body.push_back(fluent);
-        goal.aspGoal.push_back(rule);
-
-        ROS_INFO("sending goal");
-        client.sendGoal(goal);
-
-        client_gui.call(moving);
-        ros::Rate wait_rate(10);
-        while(ros::ok() && !client.getState().isDone()){
-          wait_rate.sleep();
-        }
-
-        if (client.getState() == actionlib::SimpleClientGoalState::ABORTED) {
-          ROS_INFO("Aborted");
-        }
-        else if (client.getState() == actionlib::SimpleClientGoalState::PREEMPTED) {
-          ROS_INFO("Preempted");
-        }
-
-        else if (client.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
-          ROS_INFO("Succeeded!");
-        }
-        else
-          ROS_INFO("Terminated");
-
-        break;
-      }
-      case 1:
-        question.request.message = "You sure about that?";
-        break;
-      default:
-        ROS_ERROR("Not a valid response");
-        return 1;
-    }
-        }
-        else {
-    ROS_ERROR("How did you even end up here");
-    }
-    }*/
     else {
       ROS_ERROR("Failed to call service /room_dialog");
       return 1;
