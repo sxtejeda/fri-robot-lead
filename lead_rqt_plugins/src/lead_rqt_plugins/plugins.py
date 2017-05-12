@@ -76,7 +76,7 @@ class RoomDialogPlugin(Plugin):
         self._layout.addWidget(self._text_browser)
         self._button_layout = QGridLayout()
         self._layout.addLayout(self._button_layout)
-        rospy.loginfo("Hello world")
+#        rospy.loginfo("Hello world")
 
         # Add combobox
         self._cb_layout = QHBoxLayout()
@@ -173,6 +173,7 @@ class RoomDialogPlugin(Plugin):
         while self._button_layout.count():
             item = self._button_layout.takeAt(0)
             item.widget().deleteLater()
+        self._cb.clear()
         self.buttons = []
         self.text_input = None
         self.text_label = None
