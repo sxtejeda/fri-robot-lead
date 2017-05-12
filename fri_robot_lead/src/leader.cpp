@@ -21,6 +21,7 @@ const std::string rooms[] = {
 using namespace std;
 
 int main(int argc, char **argv) {
+  bool returning = false;
   ros::init(argc, argv, "leader");
   ros::NodeHandle n;
   ros::NodeHandle privateNode("~");
@@ -30,6 +31,15 @@ int main(int argc, char **argv) {
   actionlib_msgs::GoalID msg;
   ros::service::waitForService("/room_dialog");
   ros::ServiceClient client_gui = n.serviceClient<lead_rqt_plugins::RoomDialog>("/room_dialog");
+
+  bwi_kr_execution::ExecutePlanGoal home;
+  bwi_kr_execution::AspRule home_rule;
+  bwi_kr_execution::AspFluent home_fluent;
+  home_fluent.name = "not facing";
+
+  home_fluent.variables.push_back("d3_414a1");
+  home_rule.body.push_back(home_fluent);
+  home.aspGoal.push_back(home_rule);
 
   lead_rqt_plugins::RoomDialog question;
   question.request.type = question.request.COMBOBOX_QUESTION;
@@ -56,6 +66,7 @@ int main(int argc, char **argv) {
     userAlive.request.message = "Are you still there?";
     userAlive.request.options.push_back("yes");
     userAlive.request.options.push_back("no");
+    userAlive.request.timeout = 10;
 
     moving.request.type = moving.request.DISPLAY;
     moving.request.timeout = 0;
@@ -64,6 +75,7 @@ int main(int argc, char **argv) {
 
     if (client_gui.call(question)) {
       //move_cancel_pub.publish(msg);
+      returning = false;
       if (question.response.index >= 0) {
         ROS_WARN("RESPONSE RECEIVED");
         switch (question.response.index) {
@@ -105,7 +117,7 @@ int main(int argc, char **argv) {
       ros::Time prev = ros::Time::now();
       ros::Time checkup = prev + ros::Duration(WAIT_TIME);
 
-      while (ros::ok() && !client.getState().isDone()) {
+      while (ros::ok() && !client.getState().isDone() && !returning) {
         wait_rate.sleep();
         ros::Duration elapsed = ros::Time::now() - prev;
 
@@ -130,9 +142,16 @@ int main(int argc, char **argv) {
                 break;
               case 1: //yes
                 ROS_INFO("Case 1 selected");
-                break;
               default:
                 ROS_INFO("No response maybe? Not sure...");
+                client.cancelAllGoals();
+                move_cancel_pub.publish(msg);
+                client.sendGoal(home);
+                moving.request.message = "Returning to the lab";
+                client_gui.call(moving);
+                while(ros::ok() && !client.getState().isDone())
+                	wait_rate.sleep();
+                returning = true;
                 break;
             }
           }
@@ -159,9 +178,9 @@ int main(int argc, char **argv) {
       return 1;
     }
 
-    question.request.type = question.request.DISPLAY;
-    question.request.timeout = 100000000000.000;
-    client_gui.call(question);
+    //question.request.type = question.request.DISPLAY;
+    //question.request.timeout = 100000000000.000;
+    //client_gui.call(question);
 
   }
 
