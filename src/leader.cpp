@@ -1,11 +1,17 @@
 #include <ros/ros.h>
 #include <actionlib/client/simple_action_client.h>
 #include "bwi_kr_execution/ExecutePlanAction.h"
-#include <bwi_msgs/QuestionDialog.h>
+// #include <bwi_msgs/QuestionDialog.h>
+#include <lead_rqt_plugins/RoomDialog.h>
 
 #define WAIT_TIME 20
 
 typedef actionlib::SimpleActionClient<bwi_kr_execution::ExecutePlanAction> Client;
+const int roomCount = 2;
+const std::string rooms[] = {
+    "3.414",
+    "3.404"
+}; 
 using namespace std;
 
 int main(int argc, char **argv) {
@@ -17,21 +23,25 @@ int main(int argc, char **argv) {
   ros::Publisher move_cancel_pub = n.advertise<actionlib_msgs::GoalID>("/move_base/cancel",1000);
   actionlib_msgs::GoalID msg;
 
-  ros::ServiceClient client_gui = n.serviceClient<bwi_msgs::QuestionDialog>("/question_dialog");
+  ros::ServiceClient client_gui = n.serviceClient<lead_rqt_plugins::RoomDialog>("/room_dialog");
 
   while (ros::ok()) {
-    bwi_msgs::QuestionDialog question;
-    bwi_msgs::QuestionDialog moving;
-    bwi_msgs::QuestionDialog userAlive;
-    question.request.type = question.request.CHOICE_QUESTION;
+    lead_rqt_plugins::RoomDialog question;
+    lead_rqt_plugins::RoomDialog moving;
+    lead_rqt_plugins::RoomDialog userAlive;
+    question.request.type = question.request.COMBOBOX_QUESTION;
     userAlive.request.type = userAlive.request.CHOICE_QUESTION;
 
     Client client("/action_executor/execute_plan", true);
     client.waitForServer();
 
     question.request.message = "Where would you like to go?";
-    question.request.options.push_back("414");
-    question.request.options.push_back("404");
+    for (int i = 0; i < roomCount; i++) {
+        std::string room = rooms[i];
+        question.request.options.push_back(room);
+    }
+    //question.request.options.push_back("414");
+    //question.request.options.push_back("404");
 
     question.request.timeout = question.request.NO_TIMEOUT;
 
@@ -47,14 +57,13 @@ int main(int argc, char **argv) {
     if (client_gui.call(question)) {
       move_cancel_pub.publish(msg);
       if (question.response.index >= 0) {
+        ROS_WARN("RESPONSE RECEIVED");
         switch (question.response.index) {
-          case 0:
-            privateNode.param<string>("door", door, "d3_414b1");
-            moving.request.message = "Going to 414";
-            break;
-          case 1:
-            privateNode.param<string>("door", door, "d3_404");
-            moving.request.message = "Going to 404";
+          case 42:
+            //ROS_INFO("%s\n", question.response.text);
+            ROS_WARN("ANd we're off!");
+            privateNode.param<string>("door", door, question.response.text);
+            moving.request.message = "Going to %s", question.response.text;
             break;
           default:
             ROS_ERROR("Invalid input for buttons");
@@ -194,7 +203,7 @@ int main(int argc, char **argv) {
     }
     }*/
     else {
-      ROS_ERROR("Failed to call service /question_dialog");
+      ROS_ERROR("Failed to call service /room_dialog");
       return 1;
     }
 
