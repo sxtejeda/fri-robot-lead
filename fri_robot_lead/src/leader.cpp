@@ -77,7 +77,7 @@ int main(int argc, char **argv) {
     string door;
 
     if (client_gui.call(question)) {
-      move_cancel_pub.publish(msg);
+      //move_cancel_pub.publish(msg);
       returning = false;
       if (question.response.index >= 0) {
         ROS_WARN("RESPONSE RECEIVED");
