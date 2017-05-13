@@ -156,14 +156,10 @@ class RoomDialogPlugin(Plugin):
         
         # add handling of combobox
         elif req.type == RoomDialogRequest.COMBOBOX_QUESTION:
-          #  self.clean()
             rospy.loginfo("Combobox selected")
-			
-            #self._cb.duplicatesEnabled = False
-            if self._cb.count() == 0:
-              for index, options in enumerate(req.options):
-                  self._cb.addItem(options) 
-                  rospy.loginfo(options)
+            for index, options in enumerate(req.options):
+                self._cb.addItem(options) 
+                rospy.loginfo(options)
                 #self.buttons.append(options)
             # NOTE COULD INTRODUCE BUG
             self._cb.currentIndexChanged.connect(self.handle_cb)
@@ -177,11 +173,7 @@ class RoomDialogPlugin(Plugin):
         while self._button_layout.count():
             item = self._button_layout.takeAt(0)
             item.widget().deleteLater()
-
-       # while self._cb_layout.count():
-       #     item = self._cb_layout.takeAt(0)
-       #     item.widget().deleteLater()
-
+        self._cb.clear()
         self.buttons = []
         self.text_input = None
         self.text_label = None

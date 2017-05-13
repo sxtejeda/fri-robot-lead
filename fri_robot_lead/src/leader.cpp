@@ -40,19 +40,16 @@ int main(int argc, char **argv) {
   home_fluent.variables.push_back("d3_414a1");
   home_rule.body.push_back(home_fluent);
   home.aspGoal.push_back(home_rule);
-  
+
   lead_rqt_plugins::RoomDialog question;
- 
+  question.request.type = question.request.COMBOBOX_QUESTION;
+  question.request.message = "Where would you like to go?";
+
+  for (int i = 0; i < roomCount; i++) {
+    std::string room = rooms[i];
+    question.request.options.push_back(room);
+  }
   while (ros::ok()) {
-
-
-    question.request.type = question.request.COMBOBOX_QUESTION;
-    question.request.message = "Where would you like to go?";
-
-    for (int i = 0; i < roomCount; i++) {
-      std::string room = rooms[i];
-      question.request.options.push_back(room);
-    }
     
     lead_rqt_plugins::RoomDialog moving;
     lead_rqt_plugins::RoomDialog userAlive;
