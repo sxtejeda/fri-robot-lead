@@ -76,7 +76,7 @@ class RoomDialogPlugin(Plugin):
         self._layout.addWidget(self._text_browser)
         self._button_layout = QGridLayout()
         self._layout.addLayout(self._button_layout)
-        rospy.loginfo("Hello world")
+#        rospy.loginfo("Hello world")
 
         # Add combobox
         self._cb_layout = QHBoxLayout()
@@ -156,10 +156,14 @@ class RoomDialogPlugin(Plugin):
         
         # add handling of combobox
         elif req.type == RoomDialogRequest.COMBOBOX_QUESTION:
+          #  self.clean()
             rospy.loginfo("Combobox selected")
-            for index, options in enumerate(req.options):
-                self._cb.addItem(options) 
-                rospy.loginfo(options)
+			
+            #self._cb.duplicatesEnabled = False
+            if self._cb.count() == 0:
+              for index, options in enumerate(req.options):
+                  self._cb.addItem(options) 
+                  rospy.loginfo(options)
                 #self.buttons.append(options)
             # NOTE COULD INTRODUCE BUG
             self._cb.currentIndexChanged.connect(self.handle_cb)
@@ -173,6 +177,11 @@ class RoomDialogPlugin(Plugin):
         while self._button_layout.count():
             item = self._button_layout.takeAt(0)
             item.widget().deleteLater()
+
+       # while self._cb_layout.count():
+       #     item = self._cb_layout.takeAt(0)
+       #     item.widget().deleteLater()
+
         self.buttons = []
         self.text_input = None
         self.text_label = None
