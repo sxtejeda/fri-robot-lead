@@ -1,0 +1,41 @@
+Lots of stuff to do!
+
+Visual Confirmation
+
+	Two options here:
+
+		Use the Velodyne Sensor:
+	
+			Could potentially allow for the robot to walk side by side with the person, which could be pretty neat.
+			Not sure how hard it would be to implement that though.
+
+		Use the webcam:
+
+			Probably the easier solution, there are lots of algorithms already out there for detecting people?
+			We'll also get the chance to implement distance I think?
+			
+Improved GUI
+
+	new GUI should be a lot better than the dropdown menu. I think there should still be a dropdown menu,
+	that should not be the only part here. A user should be able to type in the room number I think,
+	there should also be functionality for going to a room based upon the name of the office (e.g. Jivko's
+	), which would require just an editable text box?
+
+Multifloor Navigation
+
+	The seemingly impossible task over here. Lots of issues going on.
+		
+	The way I see the overall thought process at the moment:
+
+		User selects the room. Then, it needs to be decided whether or not this room is on the current floor that
+		the robot resides. If it is, then it should execute the current code, which sends the robot to that
+		room. Otherwise, there should be a completely different execution, one that sends the robot to the
+		elevator. Upon reaching the elevator, there are a number of other issues, notably getting the robot into
+		the actual elevator (since its sensors make it hard for the robot to enter a crowded elevator) and then
+		having it select the new map. We're gonna have to have the robot just trust that the user won't lie to the
+		robot and will help it get out of the elevator on the correct floor, but it should be able to help
+		the user select the correct floor as well. From there, somehow it needs to select the correct map. After
+		that, the robot will execute the normal program, which sends it to the correct room.
+ 
+
+	
