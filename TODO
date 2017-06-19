@@ -13,6 +13,9 @@ Visual Confirmation
 
 			Probably the easier solution, there are lots of algorithms already out there for detecting people?
 			We'll also get the chance to implement distance I think?
+
+			Ask someone about what person detection code already exists, we can probably use that as a takeoff point
+			or even just run it with our node.
 			
 Improved GUI
 

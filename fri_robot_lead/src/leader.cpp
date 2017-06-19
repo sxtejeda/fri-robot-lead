@@ -55,10 +55,11 @@ int main(int argc, char **argv) {
   bwi_kr_execution::AspFluent home_fluent;
   home_fluent.name = "not facing";
   //Change the line below to change where the 'home base' is
-  home_fluent.variables.push_back("d3_414b1");
+  home_fluent.variables.push_back("d3_414b");
   home_rule.body.push_back(home_fluent);
   home.aspGoal.push_back(home_rule);
-  
+
+
   lead_rqt_plugins::RoomDialog question;
  
   while (ros::ok()) {
@@ -97,7 +98,7 @@ int main(int argc, char **argv) {
         ROS_WARN("RESPONSE RECEIVED");
         switch (question.response.index) {
           case 42:
-            ROS_WARN("And we're off!");
+            ROS_INFO("Sending goal");
             privateNode.param<string>("door", door, question.response.text);
             moving.request.message = "Going to " + question.response.text;
             break;
@@ -155,8 +156,6 @@ int main(int argc, char **argv) {
 
                 //Sending the new goal
                 ros::spinOnce();
-                client.cancelAllGoals();
-                move_cancel_pub.publish(msg);
                 client.sendGoal(home);
                 ros::spinOnce();
 
