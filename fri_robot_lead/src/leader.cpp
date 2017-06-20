@@ -10,7 +10,7 @@
 #define USER_TIMEOUT 10
 
 typedef actionlib::SimpleActionClient<bwi_kr_execution::ExecutePlanAction> Client;
-const int roomCount = 15;
+const int roomCount = 16;
 
 //Current list of rooms on the third floor - to add a room, simply follow the format of
 //{floor number}.{room number}
@@ -30,7 +30,8 @@ const std::string rooms[] = {
     "3.414b2",
     "3.414b3",
     "3.432",
-    "3.436"
+    "3.436",
+		"2.300"
 }; 
 using namespace std;
 
