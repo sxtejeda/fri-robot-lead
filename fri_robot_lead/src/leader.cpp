@@ -9,7 +9,7 @@
 
 //How long the robot will wait before it determines that the user is no longer present
 #define USER_TIMEOUT 10
-#define RETURN_THRESHOLD 5
+#define RETURN_THRESHOLD 3
 
 typedef actionlib::SimpleActionClient<bwi_kr_execution::ExecutePlanAction> Client;
 const int roomCount = 16;
@@ -77,7 +77,7 @@ int main(int argc, char **argv) {
   bwi_kr_execution::AspFluent home_fluent;
   home_fluent.name = "not facing";
   //Change the line below to change where the 'home base' is
-  home_fluent.variables.push_back("d3_414b");
+  home_fluent.variables.push_back("d3_414b1");
   home_rule.body.push_back(home_fluent);
   home.aspGoal.push_back(home_rule);
 
