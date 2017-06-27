@@ -35,12 +35,16 @@ const std::string rooms[] = {
 }; 
 using namespace std;
 
+void detectorCallback(const )
+
 int main(int argc, char **argv) {
 
   bool returning = false;
   ros::init(argc, argv, "leader");
   ros::NodeHandle n;
   ros::NodeHandle privateNode("~");
+
+	ros::Subscriber sub = n.subscribe("/person_detected", 10, detectorCallback);
 
   //Empty message, used to stop the robot
   ros::Publisher move_cancel_pub = n.advertise<actionlib_msgs::GoalID>("/move_base/cancel",1000);
