@@ -41,10 +41,13 @@ bool return_to_base;
 ros::Time last_person_detected;
 
 void detectorCallback(const fri_robot_lead::PersonPresent::ConstPtr &msg){
+	ROS_INFO_STREAM("Leader.cpp: callback has been called");
 	if(msg->personPresent)
 		last_person_detected = msg->timeStamp;
 	else{
-		ros::Duration time_since_detection = ros::Time::now() - msg->timeStamp;
+		ros::Duration time_since_detection = ros::Time::now() - last_person_detected;
+		ROS_INFO_STREAM("Leader.cpp: person not detected. Checking time threshold...");
+		ROS_INFO_STREAM("Time since last person detected: " << time_since_detection.toSec() << " seconds.");
 		if(time_since_detection.toSec() > RETURN_THRESHOLD)
 			return_to_base = true;
 	}
@@ -58,7 +61,7 @@ int main(int argc, char **argv) {
 
   return_to_base = false;
 	last_person_detected = ros::Time::now();
-	ros::Subscriber sub = n.subscribe("/person_detected", 10, detectorCallback);
+	ros::Subscriber sub = n.subscribe("/person_present", 10, detectorCallback);
 
   //Empty message, used to stop the robot
   ros::Publisher move_cancel_pub = n.advertise<actionlib_msgs::GoalID>("/move_base/cancel",1000);
@@ -149,6 +152,7 @@ int main(int argc, char **argv) {
 /*      ros::Time prev = ros::Time::now();
       ros::Time checkup = prev + ros::Duration(CHECK_TIME);
 */
+		  last_person_detected = ros::Time::now();	
       while (ros::ok() && !client.getState().isDone() && !return_to_base) {
 /*        wait_rate.sleep();
         ros::Duration elapsed = ros::Time::now() - prev;
@@ -158,9 +162,9 @@ int main(int argc, char **argv) {
           //Stopping the robot
           ros::spinOnce();
 					if(return_to_base){
-						client.cancelAllGoals();
-						move_cancel_pub.publish(msg);
 						ROS_INFO_STREAM("Person no longer present, cancelling goal");
+						client.cancelGoal();
+//						move_cancel_pub.publish(msg);
 						client.sendGoal(home);
 						moving.request.message = "Returning to the lab";
 						client_gui.call(moving);
