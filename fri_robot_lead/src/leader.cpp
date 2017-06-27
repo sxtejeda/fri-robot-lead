@@ -2,12 +2,14 @@
 #include <actionlib/client/simple_action_client.h>
 #include "bwi_kr_execution/ExecutePlanAction.h"
 #include <lead_rqt_plugins/RoomDialog.h>
+#include "fri_robot_lead/PersonPresent.h"
 
 //how long the robot waits before checking to see if the user is still present
 #define CHECK_TIME 20
 
 //How long the robot will wait before it determines that the user is no longer present
 #define USER_TIMEOUT 10
+#define RETURN_THRESHOLD 5
 
 typedef actionlib::SimpleActionClient<bwi_kr_execution::ExecutePlanAction> Client;
 const int roomCount = 16;
@@ -35,15 +37,27 @@ const std::string rooms[] = {
 }; 
 using namespace std;
 
-void detectorCallback(const )
+bool return_to_base;
+ros::Time last_person_detected;
+
+void detectorCallback(const fri_robot_lead::PersonPresent::ConstPtr &msg){
+	if(msg->personPresent)
+		last_person_detected = msg->timeStamp;
+	else{
+		ros::Duration time_since_detection = ros::Time::now() - msg->timeStamp;
+		if(time_since_detection.toSec() > RETURN_THRESHOLD)
+			return_to_base = true;
+	}
+}
 
 int main(int argc, char **argv) {
 
-  bool returning = false;
   ros::init(argc, argv, "leader");
   ros::NodeHandle n;
   ros::NodeHandle privateNode("~");
 
+  return_to_base = false;
+	last_person_detected = ros::Time::now();
 	ros::Subscriber sub = n.subscribe("/person_detected", 10, detectorCallback);
 
   //Empty message, used to stop the robot
@@ -83,13 +97,13 @@ int main(int argc, char **argv) {
     moving.request.timeout = 0;
 
     //Prompt to see if the user is still following
-    lead_rqt_plugins::RoomDialog userAlive;
+/*  lead_rqt_plugins::RoomDialog userAlive;
     userAlive.request.type = userAlive.request.CHOICE_QUESTION;
     userAlive.request.message = "Are you still there?";
     userAlive.request.options.push_back("yes");
     userAlive.request.options.push_back("no");
     userAlive.request.timeout = USER_TIMEOUT;
-
+*/
     //The actual SimpleActionClient
     Client client("/action_executor/execute_plan", true);
     client.waitForServer();
@@ -98,7 +112,7 @@ int main(int argc, char **argv) {
 
     if (client_gui.call(question)) {
  
-      returning = false;
+      return_to_base = false;
       if (question.response.index >= 0) {
         ROS_WARN("RESPONSE RECEIVED");
         switch (question.response.index) {
@@ -132,21 +146,29 @@ int main(int argc, char **argv) {
 
       //check and see if CHECK_TIME seconds have passed before asking the user
       //if he/she is still there.
-      ros::Time prev = ros::Time::now();
+/*      ros::Time prev = ros::Time::now();
       ros::Time checkup = prev + ros::Duration(CHECK_TIME);
-
-      while (ros::ok() && !client.getState().isDone() && !returning) {
-        wait_rate.sleep();
+*/
+      while (ros::ok() && !client.getState().isDone() && !return_to_base) {
+/*        wait_rate.sleep();
         ros::Duration elapsed = ros::Time::now() - prev;
-
-        if (elapsed.toSec() > CHECK_TIME) {
+*/
+ //       if (elapsed.toSec() > CHECK_TIME) {
 
           //Stopping the robot
           ros::spinOnce();
-          client.cancelAllGoals();
-          move_cancel_pub.publish(msg);
-          ros::spinOnce();
+					if(return_to_base){
+						client.cancelAllGoals();
+						move_cancel_pub.publish(msg);
+						ROS_INFO_STREAM("Person no longer present, cancelling goal");
+						client.sendGoal(home);
+						moving.request.message = "Returning to the lab";
+						client_gui.call(moving);
+						while(ros::ok() && !client.getState().isDone())
+							wait_rate.sleep();
+					}
 
+					/*
           if(client_gui.call(userAlive)){
             switch(userAlive.response.index){
               case 0:
@@ -172,9 +194,8 @@ int main(int argc, char **argv) {
                 break;
             }
           }
-          prev = ros::Time::now();
-          checkup = prev + ros::Duration(CHECK_TIME);
-        }
+					*/
+//        }
 
       }
 
