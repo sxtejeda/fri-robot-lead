@@ -10,6 +10,7 @@
 //How long the robot will wait before it determines that the user is no longer present
 #define USER_TIMEOUT 10
 #define RETURN_THRESHOLD 10
+#define SEEN_THRESHOLD 3
 
 typedef actionlib::SimpleActionClient<bwi_kr_execution::ExecutePlanAction> Client;
 const int roomCount = 16;
@@ -37,10 +38,56 @@ const std::string rooms[] = {
 }; 
 using namespace std;
 
-bool return_to_base, wait_for_person;
-ros::Time last_person_detected;
+bool return_to_base, wait_for_person, potential_person_seen, resume_goal;
+ros::Time last_person_detected, began_waiting;
+
 
 void detectorCallback(const fri_robot_lead::PersonPresent::ConstPtr &msg){
+	ros::Time message_time = msg->timeStamp;
+	if(!wait_for_person){
+		if(msg->personPresent){
+			last_person_detected = message_time;
+		}
+		else {
+			ros::Duration time_since_detection = ros::Time::now() - last_person_detected;
+			ROS_INFO_STREAM("Leader:: person not detected. Time since last person detected: " 
+				<< time_since_detection.toSec() << " seconds.");
+			
+			if(time_since_detection.toSec() > USER_TIMEOUT){
+				wait_for_person = true;
+				began_waiting = ros::Time::now();
+			}
+		}
+	}
+	else {
+		if(msg->personPresent){
+			if(potential_person_seen){	
+				ros::Duration time_seen = message_time - last_person_detected;
+				ROS_INFO_STREAM("Leader:: person found for " << time_seen.toSec() << " seconds");			
+				
+				if(time_seen.toSec() > SEEN_THRESHOLD){
+					wait_for_person = false;
+					last_person_detected = message_time;
+					resume_goal = true;
+				}
+			}
+			else{
+				last_person_detected = message_time;
+				potential_person_seen = true;
+			}	
+	 	}
+		else{
+			ros::Duration time_waiting = msg->timeStamp - began_waiting;
+			ROS_INFO_STREAM("Leader: waited for a person for " << time_waiting.toSec() << " seconds");
+
+			if(time_waiting.toSec() > RETURN_THRESHOLD){
+				return_to_base = true;
+			}
+		}
+	} 
+}
+
+/*void detectorCallback(const fri_robot_lead::PersonPresent::ConstPtr &msg){
 	ROS_INFO_STREAM("Leader.cpp: callback has been called");
 
 	if(msg->personPresent){
@@ -59,7 +106,7 @@ void detectorCallback(const fri_robot_lead::PersonPresent::ConstPtr &msg){
 			last_person_detected = ros::Time::now();
 		}
 	}
-}
+}*/
 
 int main(int argc, char **argv) {
 
@@ -155,34 +202,40 @@ int main(int argc, char **argv) {
 			//the robot will return to the lab.
    	  last_person_detected = ros::Time::now();	
       while (ros::ok() ) {
-          ros::spinOnce();
-					
-				if(return_to_base) {
-						client.sendGoal(home);
-						moving.request.message = "Returning to the lab";
-						client_gui.call(moving);
-						while(ros::ok() && !client.getState().isDone())
-							wait_rate.sleep();
-						break;
-					}
-					else if(wait_for_person) {
-						ROS_INFO_STREAM("Leader: Person no longer present, cancelling goal");
-						client.cancelGoal();
-						move_cancel_pub.publish(msg);
-					}
-					else if(client.getState() == actionlib::SimpleClientGoalState::SUCCEEDED){
-						//TODO: Have the robot ask if the user needs help getting anywhere else. If not, then
-						//the robot should return home/enable some kind of roaming function.
-						ROS_INFO_STREAM("Leader: Goal succeeded!");
-						break;
-					}					
-					else if(client.getState() == actionlib::SimpleClientGoalState::PREEMPTED){
-						ROS_ERROR_STREAM("Leader: goal has been preempted by an external force");
-						break;
-					}
-					else if(client.getState() == actionlib::SimpleClientGoalState::ABORTED){
-						ROS_ERROR_STREAM("Leader: goal has been aborted");
-					}
+        
+				ros::spinOnce();
+				
+				if(resume_goal){
+					client.sendGoal(goal);
+					moving.request.message = "Resuming guidance";
+					client_gui.call(moving);
+				}	
+				else if(return_to_base) {
+					client.sendGoal(home);
+					moving.request.message = "Returning to the lab";
+					client_gui.call(moving);
+					while(ros::ok() && !client.getState().isDone())
+						wait_rate.sleep();
+					break;
+				}
+				else if(wait_for_person) {
+					ROS_INFO_STREAM("Leader: Person no longer present, cancelling goal");
+					client.cancelGoal();
+					move_cancel_pub.publish(msg);
+				}
+				else if(client.getState() == actionlib::SimpleClientGoalState::SUCCEEDED){
+					//TODO: Have the robot ask if the user needs help getting anywhere else. If not, then
+					//the robot should return home/enable some kind of roaming function.
+					ROS_INFO_STREAM("Leader: Goal succeeded!");
+					break;
+				}					
+				else if(client.getState() == actionlib::SimpleClientGoalState::PREEMPTED){
+					ROS_ERROR_STREAM("Leader: goal has been preempted by an external force");
+					break;
+				}
+				else if(client.getState() == actionlib::SimpleClientGoalState::ABORTED){
+					ROS_ERROR_STREAM("Leader: goal has been aborted");
+				}
       }
 
     }
