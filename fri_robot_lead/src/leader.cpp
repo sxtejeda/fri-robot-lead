@@ -9,7 +9,7 @@
 
 //How long the robot will wait before it determines that the user is no longer present
 #define USER_TIMEOUT 10
-#define RETURN_THRESHOLD 3
+#define RETURN_THRESHOLD 10
 
 typedef actionlib::SimpleActionClient<bwi_kr_execution::ExecutePlanAction> Client;
 const int roomCount = 16;
