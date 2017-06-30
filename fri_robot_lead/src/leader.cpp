@@ -37,19 +37,25 @@ const std::string rooms[] = {
 }; 
 using namespace std;
 
-bool return_to_base;
+bool return_to_base, wait_for_person;
 ros::Time last_person_detected;
 
 void detectorCallback(const fri_robot_lead::PersonPresent::ConstPtr &msg){
 	ROS_INFO_STREAM("Leader.cpp: callback has been called");
-	if(msg->personPresent)
+
+	if(msg->personPresent){
 		last_person_detected = msg->timeStamp;
-	else{
+		wait_for_person = false;
+	}
+	else {
 		ros::Duration time_since_detection = ros::Time::now() - last_person_detected;
 		ROS_INFO_STREAM("Leader.cpp: person not detected. Checking time threshold...");
 		ROS_INFO_STREAM("Time since last person detected: " << time_since_detection.toSec() << " seconds.");
-		if(time_since_detection.toSec() > RETURN_THRESHOLD)
-			return_to_base = true;
+		
+		if(wait_for_person && time_since_detection.toSec() > RETURN_THRESHOLD)
+			return_to_base = true;		
+		else if(time_since_detection.toSec() > USER_TIMEOUT)
+			wait_for_person = true;
 	}
 }
 
@@ -99,15 +105,7 @@ int main(int argc, char **argv) {
     moving.request.type = moving.request.DISPLAY;
     moving.request.timeout = 0;
 
-    //Prompt to see if the user is still following
-/*  lead_rqt_plugins::RoomDialog userAlive;
-    userAlive.request.type = userAlive.request.CHOICE_QUESTION;
-    userAlive.request.message = "Are you still there?";
-    userAlive.request.options.push_back("yes");
-    userAlive.request.options.push_back("no");
-    userAlive.request.timeout = USER_TIMEOUT;
-*/
-    //The actual SimpleActionClient
+   //The actual SimpleActionClient
     Client client("/action_executor/execute_plan", true);
     client.waitForServer();
 
@@ -116,6 +114,7 @@ int main(int argc, char **argv) {
     if (client_gui.call(question)) {
  
       return_to_base = false;
+			wait_for_person = false;
       if (question.response.index >= 0) {
         ROS_WARN("RESPONSE RECEIVED");
         switch (question.response.index) {
@@ -147,70 +146,42 @@ int main(int argc, char **argv) {
       client_gui.call(moving);
       ros::Rate wait_rate(10);
 
-      //check and see if CHECK_TIME seconds have passed before asking the user
-      //if he/she is still there.
-/*      ros::Time prev = ros::Time::now();
-      ros::Time checkup = prev + ros::Duration(CHECK_TIME);
-*/
-		  last_person_detected = ros::Time::now();	
-      while (ros::ok() && !client.getState().isDone() && !return_to_base) {
-/*        wait_rate.sleep();
-        ros::Duration elapsed = ros::Time::now() - prev;
-*/
- //       if (elapsed.toSec() > CHECK_TIME) {
-
-          //Stopping the robot
+			//Protocol for person detection:
+			//If USER_TIMEOUT seconds have passed and the robot has not seen anyone, the current guide goal
+			//Is cancelled. 
+			//Then, the robot will wait RETURN_THRESHOLD seconds for a person to reappear. If no one shows up,
+			//the robot will return to the lab.
+   	  last_person_detected = ros::Time::now();	
+      while (ros::ok() ) {
           ros::spinOnce();
-					if(return_to_base){
-						ROS_INFO_STREAM("Person no longer present, cancelling goal");
-						client.cancelGoal();
-//						move_cancel_pub.publish(msg);
+					
+					if(client.getState() == actionlib::SimpleClientGoalState::SUCCEEDED){
+						//TODO: Have the robot ask if the user needs help getting anywhere else. If not, then
+						//the robot should return home/enable some kind of roaming function.
+						ROS_INFO_STREAM("Leader: Goal succeeded!");
+						break;
+					}					
+					else if(return_to_base) {
 						client.sendGoal(home);
 						moving.request.message = "Returning to the lab";
 						client_gui.call(moving);
 						while(ros::ok() && !client.getState().isDone())
 							wait_rate.sleep();
+						break;
 					}
-
-					/*
-          if(client_gui.call(userAlive)){
-            switch(userAlive.response.index){
-              case 0:
-                ROS_INFO("User is still present, continue goal");
-                client.sendGoal(goal);
-                client_gui.call(moving);
-                break;
-              case 1:
-                ROS_INFO("Manual Selection of no");
-              default:
-                ROS_INFO("User is no longer present");
-
-                //Sending the new goal
-                ros::spinOnce();
-                client.sendGoal(home);
-                ros::spinOnce();
-
-                moving.request.message = "Returning to the lab";
-                client_gui.call(moving);
-                while(ros::ok() && !client.getState().isDone())
-                	wait_rate.sleep();
-                returning = true;
-                break;
-            }
-          }
-					*/
-//        }
-
+					else if(wait_for_person) {
+						ROS_INFO_STREAM("Leader: Person no longer present, cancelling goal");
+						client.cancelGoal();
+						move_cancel_pub.publish(msg);
+					}
+					else if(client.getState() == actionlib::SimpleClientGoalState::PREEMPTED){
+						ROS_ERROR_STREAM("Leader: goal has been preempted by an external force");
+						break;
+					}
+					else if(client.getState() == actionlib::SimpleClientGoalState::ABORTED){
+						ROS_ERROR_STREAM("Leader: goal has been aborted");
+					}
       }
-
-      if (client.getState() == actionlib::SimpleClientGoalState::ABORTED) {
-        ROS_INFO("Aborted");
-      } else if (client.getState() == actionlib::SimpleClientGoalState::PREEMPTED) {
-        ROS_INFO("Preempted");
-      } else if (client.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
-        ROS_INFO("Succeeded!");
-      } else
-        ROS_INFO("Terminated");
 
     }
 
