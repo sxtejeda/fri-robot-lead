@@ -4,12 +4,14 @@
 #include <lead_rqt_plugins/RoomDialog.h>
 #include "fri_robot_lead/PersonPresent.h"
 
-//how long the robot waits before checking to see if the user is still present
-#define CHECK_TIME 20
 
 //How long the robot will wait before it determines that the user is no longer present
-#define USER_TIMEOUT 10
+#define USER_TIMEOUT 5
+
+//How long the robot will wait for the user to reappear before it returns to the lab
 #define RETURN_THRESHOLD 10
+
+//How long the robot will wait to determine that a user is once again following it
 #define SEEN_THRESHOLD 3
 
 typedef actionlib::SimpleActionClient<bwi_kr_execution::ExecutePlanAction> Client;
@@ -206,9 +208,11 @@ int main(int argc, char **argv) {
 				ros::spinOnce();
 				
 				if(resume_goal){
+					wait_rate.sleep();
 					client.sendGoal(goal);
 					moving.request.message = "Resuming guidance";
 					client_gui.call(moving);
+					resume_goal = false;
 				}	
 				else if(return_to_base) {
 					client.sendGoal(home);
@@ -219,7 +223,6 @@ int main(int argc, char **argv) {
 					break;
 				}
 				else if(wait_for_person) {
-					ROS_INFO_STREAM("Leader: Person no longer present, cancelling goal");
 					client.cancelGoal();
 					move_cancel_pub.publish(msg);
 				}
