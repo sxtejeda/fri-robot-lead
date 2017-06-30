@@ -54,8 +54,10 @@ void detectorCallback(const fri_robot_lead::PersonPresent::ConstPtr &msg){
 		
 		if(wait_for_person && time_since_detection.toSec() > RETURN_THRESHOLD)
 			return_to_base = true;		
-		else if(time_since_detection.toSec() > USER_TIMEOUT)
+		else if(time_since_detection.toSec() > USER_TIMEOUT){
 			wait_for_person = true;
+			last_person_detected = ros::Time::now();
+		}
 	}
 }
 
@@ -155,13 +157,7 @@ int main(int argc, char **argv) {
       while (ros::ok() ) {
           ros::spinOnce();
 					
-					if(client.getState() == actionlib::SimpleClientGoalState::SUCCEEDED){
-						//TODO: Have the robot ask if the user needs help getting anywhere else. If not, then
-						//the robot should return home/enable some kind of roaming function.
-						ROS_INFO_STREAM("Leader: Goal succeeded!");
-						break;
-					}					
-					else if(return_to_base) {
+				if(return_to_base) {
 						client.sendGoal(home);
 						moving.request.message = "Returning to the lab";
 						client_gui.call(moving);
@@ -174,6 +170,12 @@ int main(int argc, char **argv) {
 						client.cancelGoal();
 						move_cancel_pub.publish(msg);
 					}
+					else if(client.getState() == actionlib::SimpleClientGoalState::SUCCEEDED){
+						//TODO: Have the robot ask if the user needs help getting anywhere else. If not, then
+						//the robot should return home/enable some kind of roaming function.
+						ROS_INFO_STREAM("Leader: Goal succeeded!");
+						break;
+					}					
 					else if(client.getState() == actionlib::SimpleClientGoalState::PREEMPTED){
 						ROS_ERROR_STREAM("Leader: goal has been preempted by an external force");
 						break;
@@ -194,5 +196,6 @@ int main(int argc, char **argv) {
 
   return 0;
 }
+
 
 
