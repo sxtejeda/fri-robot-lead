@@ -41,74 +41,58 @@ const std::string rooms[] = {
 using namespace std;
 
 bool return_to_base, wait_for_person, potential_person_seen, resume_goal;
-ros::Time last_person_detected, began_waiting;
-
+ros::Time last_message_time;
+ros::Duration last_person_detected, time_seen, wait_time;
 
 void detectorCallback(const fri_robot_lead::PersonPresent::ConstPtr &msg){
-	ros::Time message_time = msg->timeStamp;
+	ros:::Time message_time = msg->timeStamp;
+	ros::Duration time_elapsed = message_time - last_message_time;
+	last_message_time = message_time;
+
 	if(!wait_for_person){
 		if(msg->personPresent){
-			last_person_detected = message_time;
+			last_person_detected = ros::Duration(0.0);
 		}
 		else {
-			ros::Duration time_since_detection = ros::Time::now() - last_person_detected;
-			ROS_INFO_STREAM("Leader:: person not detected. Time since last person detected: " 
-				<< time_since_detection.toSec() << " seconds.");
-			
-			if(time_since_detection.toSec() > USER_TIMEOUT){
+			last_person_detected += time_elapsed;
+			ROS_INFO_STREAM("Leader:: person not detected for " << last_person_detected.toSec() << " seconds.");
+	
+			if(last_person_detected.toSec() > USER_TIMEOUT){
 				wait_for_person = true;
-				began_waiting = ros::Time::now();
+				wait_time = ros::Duration(0.0);
 			}
 		}
 	}
 	else {
 		if(msg->personPresent){
-			if(potential_person_seen){	
-				ros::Duration time_seen = message_time - last_person_detected;
-				ROS_INFO_STREAM("Leader:: person found for " << time_seen.toSec() << " seconds");			
-				
+			if(potential_person_seen){
+				time_seen += time_elapsed;
+				ROS_INFO_STREAM("Leader:: person seen for " << time_seen.toSec() << " seconds.");
+
 				if(time_seen.toSec() > SEEN_THRESHOLD){
 					wait_for_person = false;
-					last_person_detected = message_time;
+					last_person_detected = ros::Duration(0.0);
 					resume_goal = true;
 				}
 			}
-			else{
-				last_person_detected = message_time;
+			else {
 				potential_person_seen = true;
+				time_seen = ros::Duration(0.0);
 			}	
-	 	}
-		else{
-			ros::Duration time_waiting = msg->timeStamp - began_waiting;
-			ROS_INFO_STREAM("Leader: waited for a person for " << time_waiting.toSec() << " seconds");
-
-			if(time_waiting.toSec() > RETURN_THRESHOLD){
+		}
+		else {
+			wait_time += time_elapsed;
+			time_seen = ros::Duration(0.0);
+			ROS_INFO_STREAM("Leader:: waited for a person for " << wait_time.toSec() << " seconds");	
+			
+			if(wait_time.toSec() > RETURN_THRESHOLD){
 				return_to_base = true;
 			}
-		}
-	} 
+		}	
+	}
+
 }
 
-/*void detectorCallback(const fri_robot_lead::PersonPresent::ConstPtr &msg){
-	ROS_INFO_STREAM("Leader.cpp: callback has been called");
-
-	if(msg->personPresent){
-		last_person_detected = msg->timeStamp;
-		wait_for_person = false;
-	}
-	else {
-		ros::Duration time_since_detection = ros::Time::now() - last_person_detected;
-		ROS_INFO_STREAM("Leader.cpp: person not detected. Checking time threshold...");
-		ROS_INFO_STREAM("Time since last person detected: " << time_since_detection.toSec() << " seconds.");
-		
-		if(wait_for_person && time_since_detection.toSec() > RETURN_THRESHOLD)
-			return_to_base = true;		
-		else if(time_since_detection.toSec() > USER_TIMEOUT){
-			wait_for_person = true;
-			last_person_detected = ros::Time::now();
-		}
-	}
-}*/
 
 int main(int argc, char **argv) {
 
@@ -116,10 +100,9 @@ int main(int argc, char **argv) {
   ros::NodeHandle n;
   ros::NodeHandle privateNode("~");
 
-  return_to_base = false;
-	last_person_detected = ros::Time::now();
-	ros::Subscriber sub = n.subscribe("/person_present", 10, detectorCallback);
+	ros::Subscriber person_sub = n.subscribe("/person_present", 10, detectorCallback);
 
+	ros::Subscriber logical_feedback_sub = n.subscribe("/execute_logical_goal/feedback", 10, feedbackCallback);
   //Empty message, used to stop the robot
   ros::Publisher move_cancel_pub = n.advertise<actionlib_msgs::GoalID>("/move_base/cancel",1000);
   actionlib_msgs::GoalID msg;
@@ -166,6 +149,9 @@ int main(int argc, char **argv) {
  
       return_to_base = false;
 			wait_for_person = false;
+			last_person_detected = ros::Duration(0.0);
+
+
       if (question.response.index >= 0) {
         ROS_WARN("RESPONSE RECEIVED");
         switch (question.response.index) {
