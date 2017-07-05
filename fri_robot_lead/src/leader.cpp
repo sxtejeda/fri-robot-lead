@@ -45,7 +45,7 @@ ros::Time last_message_time;
 ros::Duration last_person_detected, time_seen, wait_time;
 
 void detectorCallback(const fri_robot_lead::PersonPresent::ConstPtr &msg){
-	ros:::Time message_time = msg->timeStamp;
+	ros::Time message_time = msg->timeStamp;
 	ros::Duration time_elapsed = message_time - last_message_time;
 	last_message_time = message_time;
 
@@ -102,7 +102,7 @@ int main(int argc, char **argv) {
 
 	ros::Subscriber person_sub = n.subscribe("/person_present", 10, detectorCallback);
 
-	ros::Subscriber logical_feedback_sub = n.subscribe("/execute_logical_goal/feedback", 10, feedbackCallback);
+//	ros::Subscriber logical_feedback_sub = n.subscribe("/execute_logical_goal/feedback", 10, feedbackCallback);
   //Empty message, used to stop the robot
   ros::Publisher move_cancel_pub = n.advertise<actionlib_msgs::GoalID>("/move_base/cancel",1000);
   actionlib_msgs::GoalID msg;
@@ -188,7 +188,7 @@ int main(int argc, char **argv) {
 			//Is cancelled. 
 			//Then, the robot will wait RETURN_THRESHOLD seconds for a person to reappear. If no one shows up,
 			//the robot will return to the lab.
-   	  last_person_detected = ros::Time::now();	
+   	  last_person_detected = ros::Duration(0.0);
       while (ros::ok() ) {
         
 				ros::spinOnce();
