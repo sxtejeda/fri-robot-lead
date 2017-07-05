@@ -1,9 +1,10 @@
 <launch>
+	<!-- launch the action node -->
 	<node name="leader" pkg="fri_robot_lead"
 	type="fri_robot_leader">
 	</node>
-  <!-- launch our room dialog -->
-
-  <!-- launch the normal robot simulator -->
-  <node name="lead_rqt_plugins" pkg="lead_rqt_plugins" type="room_dialog_plugin" />
+  <!-- launch the gui-->
+  <node name="lead_rqt_plugins" pkg="lead_rqt_plugins" type="room_dialog_plugin"/>
+	<!-- launch the person detector -->
+	<include file="$(find fri_robot_lead)/launch/person_detector.launch"/>
 </launch>
