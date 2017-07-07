@@ -57,6 +57,7 @@ void detectorCallback(const fri_robot_lead::PersonPresent::ConstPtr &msg){
 	//If the robot has been waiting on a request for more than NON_APPROACH_LIMIT seconds, return to the base
 	if(!approaching){
 		request_time += time_elapsed;
+		ROS_INFO_STREAM("Leader:: waited for a request for " << request_time.toSec() << " seconds");
 		if(request_time.toSec() > NON_APPROACH_LIMIT)
 			return_to_base = true;
 	}
@@ -110,13 +111,15 @@ void detectorCallback(const fri_robot_lead::PersonPresent::ConstPtr &msg){
 
 }
 
-void logicalFeedbackCallback(const bwi_msgs::LogicalNavigationFeedback::ConstPtr &msg){
-	if(msg->name == "approachDoor" || msg->name == "approachObject")
+void logicalFeedbackCallback(const bwi_msgs::LogicalNavigationActionFeedback::ConstPtr &msg){
+	if(msg->feedback.name == "approachdoor" || msg->feedback.name == "approachobject")
 		approaching = true;
 	else {
-		if(!approaching)
+		if(!approaching) {
 			request_time = ros::Duration(0.0);
-		approaching = false;
+			ROS_INFO_STREAM("Leader:: Detected non-approach action. Resetting wait time");
+		}	
+	approaching = false;
 	}
 }
 
