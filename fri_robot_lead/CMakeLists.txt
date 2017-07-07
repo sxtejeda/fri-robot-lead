@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
 	cv_bridge
 	image_transport
 	message_generation
+	bwi_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -39,6 +40,8 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
+	DEPENDS
+	bwi_msgs
 )
 
 # Specify additional locations of header files

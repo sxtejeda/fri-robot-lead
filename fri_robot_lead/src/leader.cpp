@@ -3,7 +3,7 @@
 #include "bwi_kr_execution/ExecutePlanAction.h"
 #include <lead_rqt_plugins/RoomDialog.h>
 #include "fri_robot_lead/PersonPresent.h"
-
+#include <bwi_msgs/LogicalNavigationAction.h>
 
 //How long the robot will wait before it determines that the user is no longer present
 #define USER_TIMEOUT 5
@@ -13,6 +13,9 @@
 
 //How long the robot will wait to determine that a user is once again following it
 #define SEEN_THRESHOLD 3
+
+//How long the robot will wait in a non-approach logical task before timing out and sending itself back to the lab
+#define NON_APPROACH_LIMIT 90
 
 typedef actionlib::SimpleActionClient<bwi_kr_execution::ExecutePlanAction> Client;
 const int roomCount = 16;
@@ -40,19 +43,30 @@ const std::string rooms[] = {
 }; 
 using namespace std;
 
-bool return_to_base, wait_for_person, potential_person_seen, resume_goal;
+bool return_to_base, wait_for_person, potential_person_seen, resume_goal, approaching;
 ros::Time last_message_time;
-ros::Duration last_person_detected, time_seen, wait_time;
+ros::Duration last_person_detected, time_seen, wait_time, request_time;
 
+
+//The protocol for whether the robot should return to the base:
 void detectorCallback(const fri_robot_lead::PersonPresent::ConstPtr &msg){
 	ros::Time message_time = msg->timeStamp;
 	ros::Duration time_elapsed = message_time - last_message_time;
 	last_message_time = message_time;
-
-	if(!wait_for_person){
+	
+	//If the robot has been waiting on a request for more than NON_APPROACH_LIMIT seconds, return to the base
+	if(!approaching){
+		request_time += time_elapsed;
+		if(request_time.toSec() > NON_APPROACH_LIMIT)
+			return_to_base = true;
+	}
+	//If the robot is moving
+	else if(!wait_for_person){
+		//If someone is visible, reset last_person_detected
 		if(msg->personPresent){
 			last_person_detected = ros::Duration(0.0);
 		}
+		//If no one has been visible for over USER_TIMEOUT seconds, stop moving
 		else {
 			last_person_detected += time_elapsed;
 			ROS_INFO_STREAM("Leader:: person not detected for " << last_person_detected.toSec() << " seconds.");
@@ -63,8 +77,10 @@ void detectorCallback(const fri_robot_lead::PersonPresent::ConstPtr &msg){
 			}
 		}
 	}
+	//If the robot has stopped moving
 	else {
 		if(msg->personPresent){
+			//If a person has been seen for over SEEN_THRESHOLD seconds, resume the original goal
 			if(potential_person_seen){
 				time_seen += time_elapsed;
 				ROS_INFO_STREAM("Leader:: person seen for " << time_seen.toSec() << " seconds.");
@@ -81,6 +97,7 @@ void detectorCallback(const fri_robot_lead::PersonPresent::ConstPtr &msg){
 			}	
 		}
 		else {
+			//If no one has been seen for RETURN_THRESHOLD seconds, return to the base
 			wait_time += time_elapsed;
 			time_seen = ros::Duration(0.0);
 			ROS_INFO_STREAM("Leader:: waited for a person for " << wait_time.toSec() << " seconds");	
@@ -93,6 +110,15 @@ void detectorCallback(const fri_robot_lead::PersonPresent::ConstPtr &msg){
 
 }
 
+void logicalFeedbackCallback(const bwi_msgs::LogicalNavigationFeedback::ConstPtr &msg){
+	if(msg->name == "approachDoor" || msg->name == "approachObject")
+		approaching = true;
+	else {
+		if(!approaching)
+			request_time = ros::Duration(0.0);
+		approaching = false;
+	}
+}
 
 int main(int argc, char **argv) {
 
@@ -101,8 +127,9 @@ int main(int argc, char **argv) {
   ros::NodeHandle privateNode("~");
 
 	ros::Subscriber person_sub = n.subscribe("/person_present", 10, detectorCallback);
+	ros::Subscriber logical_feedback_sub = n.subscribe("/execute_logical_goal/feedback", 10, logicalFeedbackCallback);
 
-//	ros::Subscriber logical_feedback_sub = n.subscribe("/execute_logical_goal/feedback", 10, feedbackCallback);
+
   //Empty message, used to stop the robot
   ros::Publisher move_cancel_pub = n.advertise<actionlib_msgs::GoalID>("/move_base/cancel",1000);
   actionlib_msgs::GoalID msg;
@@ -147,11 +174,6 @@ int main(int argc, char **argv) {
 
     if (client_gui.call(question)) {
  
-      return_to_base = false;
-			wait_for_person = false;
-			last_person_detected = ros::Duration(0.0);
-
-
       if (question.response.index >= 0) {
         ROS_WARN("RESPONSE RECEIVED");
         switch (question.response.index) {
@@ -188,7 +210,10 @@ int main(int argc, char **argv) {
 			//Is cancelled. 
 			//Then, the robot will wait RETURN_THRESHOLD seconds for a person to reappear. If no one shows up,
 			//the robot will return to the lab.
-   	  last_person_detected = ros::Duration(0.0);
+      return_to_base = wait_for_person = false;
+			approaching = true;
+			last_person_detected = ros::Duration(0.0);
+
       while (ros::ok() ) {
         
 				ros::spinOnce();
