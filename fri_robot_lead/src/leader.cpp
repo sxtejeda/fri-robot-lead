@@ -5,17 +5,23 @@
 #include "fri_robot_lead/PersonPresent.h"
 #include <bwi_msgs/LogicalNavigationAction.h>
 
-//How long the robot will wait before it determines that the user is no longer present
+//Definitions for the status variable
+#define APPROACHING 0
+#define REQUESTING 1
+#define OTHER 2
+
+//How many seconds the robot will wait before it determines that the user is no longer present
 #define USER_TIMEOUT 5
 
-//How long the robot will wait for the user to reappear before it returns to the lab
+//How many seconds the robot will wait for the user to reappear before it returns to the lab
 #define RETURN_THRESHOLD 10
 
-//How long the robot will wait to determine that a user is once again following it
+//How many second the robot will wait to determine that a user is once again following it
 #define SEEN_THRESHOLD 3
 
-//How long the robot will wait in a non-approach logical task before timing out and sending itself back to the lab
-#define NON_APPROACH_LIMIT 90
+//How many seconds the robot will wait on a door request (not including elevator protocol) 
+//before timing out and sending itself back to the lab
+#define REQUEST_LIMIT 90
 
 typedef actionlib::SimpleActionClient<bwi_kr_execution::ExecutePlanAction> Client;
 const int roomCount = 16;
@@ -43,9 +49,11 @@ const std::string rooms[] = {
 }; 
 using namespace std;
 
-bool return_to_base, wait_for_person, potential_person_seen, resume_goal, approaching;
+bool return_to_base, wait_for_person, potential_person_seen, resume_goal;
 ros::Time last_message_time;
 ros::Duration last_person_detected, time_seen, wait_time, request_time;
+int status;
+
 
 
 //The protocol for whether the robot should return to the base:
@@ -54,11 +62,11 @@ void detectorCallback(const fri_robot_lead::PersonPresent::ConstPtr &msg){
 	ros::Duration time_elapsed = message_time - last_message_time;
 	last_message_time = message_time;
 	
-	//If the robot has been waiting on a request for more than NON_APPROACH_LIMIT seconds, return to the base
-	if(!approaching){
+	//If the robot has been waiting on a request for more than REQUEST_LIMIT seconds, return to the base
+	if(status == REQUESTING){
 		request_time += time_elapsed;
 		ROS_INFO_STREAM("Leader:: waited for a request for " << request_time.toSec() << " seconds");
-		if(request_time.toSec() > NON_APPROACH_LIMIT)
+		if(request_time.toSec() > REQUEST_LIMIT)
 			return_to_base = true;
 	}
 	//If the robot is moving
@@ -112,15 +120,18 @@ void detectorCallback(const fri_robot_lead::PersonPresent::ConstPtr &msg){
 }
 
 void logicalFeedbackCallback(const bwi_msgs::LogicalNavigationActionFeedback::ConstPtr &msg){
-	if(msg->feedback.name == "approachdoor" || msg->feedback.name == "approachobject")
-		approaching = true;
-	else {
-		if(!approaching) {
+	string name = msg->feedback.name;
+	if(name == "approachdoor" || name == "approachobject")
+		status = APPROACHING;
+	else if (name == "sensedoor"){
+		if(status != REQUESTING){
 			request_time = ros::Duration(0.0);
 			ROS_INFO_STREAM("Leader:: Detected non-approach action. Resetting wait time");
-		}	
-	approaching = false;
+		}
+		//else, do nothing
 	}
+	else //Robot is enacting either sensestate or is involved in the elevator protocol
+		status = OTHER;
 }
 
 int main(int argc, char **argv) {
@@ -208,13 +219,8 @@ int main(int argc, char **argv) {
       client_gui.call(moving);
       ros::Rate wait_rate(10);
 
-			//Protocol for person detection:
-			//If USER_TIMEOUT seconds have passed and the robot has not seen anyone, the current guide goal
-			//Is cancelled. 
-			//Then, the robot will wait RETURN_THRESHOLD seconds for a person to reappear. If no one shows up,
-			//the robot will return to the lab.
       return_to_base = wait_for_person = false;
-			approaching = true;
+			status = APPROACHING;
 			last_person_detected = ros::Duration(0.0);
 
       while (ros::ok() ) {
