@@ -120,10 +120,10 @@ void detectorCallback(const fri_robot_lead::PersonPresent::ConstPtr &msg){
 }
 
 void logicalFeedbackCallback(const bwi_msgs::LogicalNavigationActionFeedback::ConstPtr &msg){
-	string name = msg->feedback.name;
-	if(name == "approachdoor" || name == "approachobject")
+	int action = msg->feedback.action;
+	if(action == bwi_msgs::LogicalNavigationFeedback::APPROACH_DOOR || action == bwi_msgs::LogicalNavigationFeedback::APPROACH_OBJECT)
 		status = APPROACHING;
-	else if (name == "sensedoor"){
+	else if (action == bwi_msgs::LogicalNavigationFeedback::SENSE_DOOR){
 		if(status != REQUESTING){
 			request_time = ros::Duration(0.0);
 			ROS_INFO_STREAM("Leader:: Detected non-approach action. Resetting wait time");
