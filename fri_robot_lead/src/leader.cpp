@@ -8,10 +8,11 @@
 //Definitions for the status variable
 #define APPROACHING 0
 #define REQUESTING 1
-#define OTHER 2
+#define ELEVATOR 2
+#define OTHER 3
 
 //How many seconds the robot will wait before it determines that the user is no longer present
-#define USER_TIMEOUT 5
+#define USER_TIMEOUT 7
 
 //How many seconds the robot will wait for the user to reappear before it returns to the lab
 #define RETURN_THRESHOLD 10
@@ -58,6 +59,10 @@ int status;
 
 //The protocol for whether the robot should return to the base:
 void detectorCallback(const fri_robot_lead::PersonPresent::ConstPtr &msg){
+	//Do not run this method if the robot is engaged in elevator protocol
+	if(status == ELEVATOR)
+		return;
+	
 	ros::Time message_time = msg->timeStamp;
 	ros::Duration time_elapsed = message_time - last_message_time;
 	last_message_time = message_time;
@@ -121,16 +126,24 @@ void detectorCallback(const fri_robot_lead::PersonPresent::ConstPtr &msg){
 
 void logicalFeedbackCallback(const bwi_msgs::LogicalNavigationActionFeedback::ConstPtr &msg){
 	int action = msg->feedback.action;
-	if(action == bwi_msgs::LogicalNavigationFeedback::APPROACH_DOOR || action == bwi_msgs::LogicalNavigationFeedback::APPROACH_OBJECT)
-		status = APPROACHING;
-	else if (action == bwi_msgs::LogicalNavigationFeedback::SENSE_DOOR){
-		if(status != REQUESTING){
-			request_time = ros::Duration(0.0);
-			ROS_INFO_STREAM("Leader:: Detected non-approach action. Resetting wait time");
+	if(status == ELEVATOR){
+		if(action != bwi_msgs::LogicalNavigationFeedback::CHANGE_FLOOR)
+			return;
+		else{
+			status = APPROACHING;
+			last_person_detected = ros::Duration(-5.0);
 		}
-		//else, do nothing
 	}
-	else //Robot is enacting either sensestate or is involved in the elevator protocol
+	else if(action == bwi_msgs::LogicalNavigationFeedback::APPROACH_DOOR || action == bwi_msgs::LogicalNavigationFeedback::APPROACH_OBJECT)
+		status = APPROACHING;
+	else if (action == bwi_msgs::LogicalNavigationFeedback::SENSE_DOOR && status != REQUESTING){
+		request_time = ros::Duration(0.0);
+		ROS_INFO_STREAM("Leader:: Detected non-approach action. Resetting wait time");
+	}
+	else if(action == bwi_msgs::LogicalNavigationFeedback::CHANGE_FLOOR) {
+		status = ELEVATOR;
+	}
+	else 
 		status = OTHER;
 }
 
