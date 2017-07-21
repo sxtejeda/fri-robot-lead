@@ -126,22 +126,36 @@ void detectorCallback(const fri_robot_lead::PersonPresent::ConstPtr &msg){
 
 void logicalFeedbackCallback(const bwi_msgs::LogicalNavigationActionFeedback::ConstPtr &msg){
 	int action = msg->feedback.action;
+	int goal_status = msg->status.status;
 	if(status == ELEVATOR){
-		if(action != bwi_msgs::LogicalNavigationFeedback::CHANGE_FLOOR)
+		ROS_INFO_STREAM("Currently running elevator protocol..");
+		if(action == bwi_msgs::LogicalNavigationFeedback::APPROACH_DOOR){ 
+			std::size_t found = msg->feedback.data.find("elev");
+			if(found == std::string::npos) {
+				last_person_detected = ros::Duration(0.0);
+				ROS_INFO_STREAM("Leader::Elevator protocol completed. Resuming person detection");
+				status = APPROACHING;
+			}
+		}
+		else
 			return;
+	}
+	else if(action == bwi_msgs::LogicalNavigationFeedback::APPROACH_DOOR){
+		std::size_t found = msg->feedback.data.find("elev");
+		if(found != std::string::npos && goal_status == actionlib_msgs::GoalStatus::SUCCEEDED){
+			status = ELEVATOR;
+			ROS_INFO_STREAM("Leader:: Waiting for elevator, ignoring person detection");
+		}
 		else{
 			status = APPROACHING;
-			last_person_detected = ros::Duration(-5.0);
 		}
-	}
-	else if(action == bwi_msgs::LogicalNavigationFeedback::APPROACH_DOOR || action == bwi_msgs::LogicalNavigationFeedback::APPROACH_OBJECT)
+	}	
+ else if(action == bwi_msgs::LogicalNavigationFeedback::APPROACH_OBJECT)
 		status = APPROACHING;
 	else if (action == bwi_msgs::LogicalNavigationFeedback::SENSE_DOOR && status != REQUESTING){
 		request_time = ros::Duration(0.0);
 		ROS_INFO_STREAM("Leader:: Detected non-approach action. Resetting wait time");
-	}
-	else if(action == bwi_msgs::LogicalNavigationFeedback::CHANGE_FLOOR) {
-		status = ELEVATOR;
+		status = REQUESTING;
 	}
 	else 
 		status = OTHER;
