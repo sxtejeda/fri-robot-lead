@@ -1,9 +1,11 @@
+#include <algorithm>
 #include <ros/ros.h>
 #include <actionlib/client/simple_action_client.h>
 #include "bwi_kr_execution/ExecutePlanAction.h"
 #include <lead_rqt_plugins/RoomDialog.h>
 #include "fri_robot_lead/PersonPresent.h"
 #include <bwi_msgs/LogicalNavigationAction.h>
+#include <bwi_msgs/QuestionDialog.h>
 
 //Definitions for the status variable
 #define APPROACHING 0
@@ -159,12 +161,21 @@ void logicalFeedbackCallback(const bwi_msgs::LogicalNavigationActionFeedback::Co
     status = OTHER;
 }
 
+string door_string(string s){
+  std::stringstream ss;
+  ss << "d";
+  ss << s;
+  std::string ret = ss.str();
+  std::replace(ret.begin(), ret.end(), '.','_');
+  return ret;
+} 
 int main(int argc, char **argv) {
 
   ros::init(argc, argv, "leader");
   ros::NodeHandle n;
   ros::NodeHandle privateNode("~");
 
+  ros::ServiceClient client_gui = n.serviceClient<bwi_msgs::QuestionDialog>("question_dialog");
   ros::Subscriber person_sub = n.subscribe("/person_present", 10, detectorCallback);
   ros::Subscriber logical_feedback_sub = n.subscribe("/execute_logical_goal/feedback", 10, logicalFeedbackCallback);
 
@@ -172,10 +183,6 @@ int main(int argc, char **argv) {
   //Empty message, used to stop the robot
   ros::Publisher move_cancel_pub = n.advertise<actionlib_msgs::GoalID>("/move_base/cancel", 1000);
   actionlib_msgs::GoalID msg;
-
-  //Custom service with dropdown menu containing all the rooms defined in rooms array above
-  ros::service::waitForService("/room_dialog");
-  ros::ServiceClient client_gui = n.serviceClient<lead_rqt_plugins::RoomDialog>("/room_dialog");
 
   //Where the robot returns if there is no longer a user present
   bwi_kr_execution::ExecutePlanGoal home;
@@ -188,11 +195,11 @@ int main(int argc, char **argv) {
   home.aspGoal.push_back(home_rule);
 
 
-  lead_rqt_plugins::RoomDialog question;
+  bwi_msgs::QuestionDialog question;
 
   while (ros::ok()) {
 
-    question.request.type = question.request.COMBOBOX_QUESTION;
+    question.request.type = question.request.LIST_QUESTION; 
     question.request.message = "Where would you like to go?";
     question.request.timeout = question.request.NO_TIMEOUT;
 
@@ -201,7 +208,7 @@ int main(int argc, char **argv) {
       question.request.options.push_back(room);
     }
     //Moving message for the GUI
-    lead_rqt_plugins::RoomDialog moving;
+    bwi_msgs::QuestionDialog moving;
     moving.request.type = moving.request.DISPLAY;
     moving.request.timeout = 0;
 
@@ -214,8 +221,10 @@ int main(int argc, char **argv) {
     if (client_gui.call(question)) {
 
       if (question.response.index >= 0) {
-        ROS_WARN("RESPONSE RECEIVED");
-        switch (question.response.index) {
+        ROS_INFO("Leader::destination selected");
+        string dest = door_string(question.response.text);
+        moving.request.message = "Going to " + question.response.text; 
+/*        switch (question.response.index) {
           case 42:
             ROS_INFO("Sending goal");
             privateNode.param<string>("door", door, question.response.text);
@@ -224,7 +233,7 @@ int main(int argc, char **argv) {
           default:
             ROS_ERROR("Invalid input for buttons");
             break;
-        }
+         }*/
       }
       else {
         ROS_ERROR("Should not be possible to get here.");
